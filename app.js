@@ -1,3 +1,9 @@
+// resolve the directory that contains app.js so relative fetches work from any subdirectory
+const _root = (() => {
+  const src = document.currentScript && document.currentScript.src;
+  return src ? src.substring(0, src.lastIndexOf('/') + 1) : './';
+})();
+
 // load Twemoji so flag/colour emoji render consistently (esp. on Windows)
 (function () {
   const s = document.createElement('script');
@@ -22,7 +28,7 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&l
 (function () {
   const track = document.querySelector('.ticker.notices .ticker-track');
   if (!track) return;
-  fetch('/notices.txt')
+  fetch(_root + 'notices.txt')
     .then(r => r.text())
     .then(text => {
       const lines = text.split(/\r?\n/).map(s => s.trim()).filter(s => s && !s.startsWith('#'));
