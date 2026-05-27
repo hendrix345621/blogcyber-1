@@ -2,14 +2,14 @@
 <rss version="2.0">
   <channel>
     <title>$kenna's blog</title>
-    <link>/</link>
+    <link>https://hendrix345621.github.io/blogcyber-1/</link>
     <description>things i like talking about</description>
     <language>en</language>
 
     <item>
       <title>1st entry</title>
-      <link>/posts/1st-entry.html</link>
-      <guid>/posts/1st-entry.html</guid>
+      <link>https://hendrix345621.github.io/blogcyber-1/posts/1st-entry.html</link>
+      <guid>https://hendrix345621.github.io/blogcyber-1/posts/1st-entry.html</guid>
       <pubDate>Tue, 12 May 2026 03:14:00 +0000</pubDate>
       <description>the first post.</description>
     </item>

@@ -9,13 +9,8 @@ img.emoji {
   vertical-align: -0.1em;
 }
 @font-face {
-  font-family: "Saiba-45";
-  src: url("/fonts/SAIBA-45.woff") format("woff");
-  font-display: swap;
-}
-@font-face {
   font-family: "OPTISmoke";
-  src: url("/fonts/OPTISmoke.otf") format("opentype");
+  src: url("fonts/OPTISmoke.otf") format("opentype");
   font-display: swap;
 }
 
