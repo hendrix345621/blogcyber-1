@@ -28,6 +28,8 @@ img.emoji {
 
 * { box-sizing: border-box; }
 
+html { -webkit-text-size-adjust: 100%; }
+
 body {
   background: var(--bg);
   color: var(--fg);
@@ -35,6 +37,7 @@ body {
   font-size: 16px;
   line-height: 1.5;
   margin: 0;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -279,8 +282,16 @@ aside h2 {
 
 /* ---------- mobile ---------- */
 @media (max-width: 640px) {
+  .wrap { padding: 1.25rem 1rem; }
   .title { font-size: 3rem; }
+  #theme-toggle { width: 2.75rem; height: 2.75rem; }
   .layout { grid-template-columns: 1fr; gap: 1.5rem; }
   .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .xmr .qr-slot { width: 60%; }
+  .stickers-footer { flex-wrap: wrap; gap: 0.5rem; }
+  .post-nav { flex-wrap: wrap; gap: 0.5rem; }
+}
+
+@media (max-width: 380px) {
+  .title { font-size: 2.25rem; }
 }
