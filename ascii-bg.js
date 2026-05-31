@@ -30,7 +30,7 @@
   const CONTRAST = 65;           // higher = punchier (ascii.html formula)
   const cF = (259 * (CONTRAST + 255)) / (255 * (259 - CONTRAST));
   const CYCLE_MS = 10000;        // time each sticker is shown
-  const FADE_MS = 550;           // crossfade duration (matches CSS .6s)
+  const FADE_MS = 600;           // must be >= the CSS opacity transition (.6s)
 
   const mimeOf = (u) =>
     /\.gif(\?|#|$)/i.test(u) ? "image/gif" :
@@ -53,7 +53,9 @@
   const fitFont = () =>
     (art.style.fontSize = window.innerWidth / (cols * 0.6) + "px");
 
-  function renderFrame(image) {
+  // render one decoded frame to an ascii string (does NOT touch the DOM, so the
+  // next sticker can be decoded off-screen while the current one is on screen)
+  function frameToText(image) {
     const sw = image.displayWidth || image.codedWidth || 1;
     const sh = image.displayHeight || image.codedHeight || 1;
     const rows = Math.max(1, Math.round(cols * (sh / sw) * CHAR_ASPECT));
@@ -76,7 +78,16 @@
       }
       out += "\n";
     }
-    art.textContent = out;
+    return out;
+  }
+
+  // decode frame k of a decoder -> { text, dur(ms) }
+  async function renderIndex(dec, k) {
+    const { image } = await dec.decode({ frameIndex: k });
+    const text = frameToText(image);
+    const dur = image.duration ? image.duration / 1000 : 100;
+    image.close && image.close();
+    return { text, dur };
   }
 
   // cache encoded bytes (keep only current + next to bound memory)
@@ -94,70 +105,83 @@
     return bufCache.get(url);
   }
 
-  // Decode + start playing a sticker. Returns a stop() fn. The first frame is
-  // rendered before resolving so the caller can crossfade onto real art.
-  async function makePlayer(url) {
+  // Build a player for a sticker: decode + render frame 0 up front (so the swap
+  // is instant), and expose start()/stop(). Only ONE player ever drives
+  // #ascii-art — the loop always stops the previous before starting the next,
+  // so two gifs can never write to the screen at the same time.
+  async function createPlayer(url) {
     const buf = await getBuffer(url);
     const dec = new ImageDecoder({ data: buf, type: mimeOf(url) });
     await dec.tracks.ready;
     const track = dec.tracks.selectedTrack;
     const count = track ? track.frameCount : 1;
-    let i = 0, stopped = false, timer = null;
+    const first = await renderIndex(dec, 0);   // frame 0 ready before we show it
 
-    async function draw(k) {
-      const { image } = await dec.decode({ frameIndex: k });
-      if (stopped) { image.close && image.close(); return 100; }
-      renderFrame(image);
-      const dur = image.duration ? image.duration / 1000 : 100;
-      image.close && image.close();
-      return dur;
-    }
-    const schedule = (dur) => {
-      if (!reduce && count > 1 && !stopped)
-        timer = setTimeout(tick, Math.max(40, dur));
-    };
+    let stopped = false, timer = null, i = 0;
     async function tick() {
       if (stopped) return;
       i = (i + 1) % count;
-      schedule(await draw(i));
+      let frame;
+      try { frame = await renderIndex(dec, i); }
+      catch (e) { return; }                    // hold last good frame on error
+      if (stopped) return;
+      art.textContent = frame.text;
+      timer = setTimeout(tick, Math.max(40, frame.dur));
     }
 
-    schedule(await draw(0));   // render frame 0 now, then animate
-    return () => {
-      stopped = true;
-      if (timer) clearTimeout(timer);
-      try { dec.close && dec.close(); } catch (e) {}
+    return {
+      firstText: first.text,
+      start() {
+        if (!reduce && count > 1 && !stopped)
+          timer = setTimeout(tick, Math.max(40, first.dur));
+      },
+      stop() {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+        try { dec.close && dec.close(); } catch (e) {}
+      },
     };
   }
 
-  let idx = 0, stopCurrent = null, running = true;
+  let running = true;
 
   async function loop() {
     computeCols();
     fitFont();
+
+    const prep = (i) =>
+      createPlayer(FILES[i]).catch((e) => {
+        console.warn("[ascii-bg]", FILES[i], "failed:", e.message || e);
+        return null;
+      });
+
+    let idx = 0;
+    let current = null;
+    let next = await prep(idx);          // decode the first sticker before showing
+
     while (running) {
-      let nextStop = null;
-      try {
-        nextStop = await makePlayer(FILES[idx]); // old keeps playing meanwhile
-      } catch (e) {
-        console.warn("[ascii-bg]", FILES[idx], "failed:", e.message || e);
-      }
-      if (nextStop) {
-        if (stopCurrent) stopCurrent();
-        stopCurrent = nextStop;
-        bg.classList.remove("swapping");          // fade the new one in
+      if (next) {
+        if (current) {                   // fade the old out, then swap (one writer)
+          bg.classList.add("swapping");
+          await sleep(FADE_MS);
+          current.stop();
+        }
+        art.textContent = next.firstText;
+        current = next;
+        current.start();
+        bg.classList.remove("swapping"); // fade the new one in
       }
 
-      // warm the next buffer; drop ones we no longer need
-      const nextFile = FILES[(idx + 1) % FILES.length];
-      getBuffer(nextFile).catch(() => {});
-      const keep = new Set([FILES[idx], nextFile]);
+      // decode the FOLLOWING sticker during the idle window so the next swap is
+      // instant (no blank gap), then prune buffers we no longer need
+      const nextIdx = (idx + 1) % FILES.length;
+      const preparing = prep(nextIdx);
+      const keep = new Set([FILES[idx], FILES[nextIdx]]);
       for (const k of [...bufCache.keys()]) if (!keep.has(k)) bufCache.delete(k);
 
       await sleep(CYCLE_MS);
-      bg.classList.add("swapping");               // fade out before swap
-      await sleep(FADE_MS);
-      idx = (idx + 1) % FILES.length;
+      next = await preparing;
+      idx = nextIdx;
     }
   }
   loop();
