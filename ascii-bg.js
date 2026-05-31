@@ -31,6 +31,8 @@
   const cF = (259 * (CONTRAST + 255)) / (255 * (259 - CONTRAST));
   const CYCLE_MS = 10000;        // time each sticker is shown
   const FADE_MS = 600;           // must be >= the CSS opacity transition (.6s)
+  const MAX_FRAMES = 48;         // cap frames per gif (sampled) to bound work
+  const MIN_FRAME_MS = 66;       // throttle playback to ~15fps to stay smooth
 
   const mimeOf = (u) =>
     /\.gif(\?|#|$)/i.test(u) ? "image/gif" :
@@ -47,14 +49,13 @@
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-  let cols = 220;
+  let cols = 160;
   const computeCols = () =>
-    (cols = Math.min(320, Math.max(100, Math.round(window.innerWidth / 6))));
+    (cols = Math.min(200, Math.max(90, Math.round(window.innerWidth / 8))));
   const fitFont = () =>
     (art.style.fontSize = window.innerWidth / (cols * 0.6) + "px");
 
-  // render one decoded frame to an ascii string (does NOT touch the DOM, so the
-  // next sticker can be decoded off-screen while the current one is on screen)
+  // render one decoded frame to an ascii string (pure — does not touch the DOM)
   function frameToText(image) {
     const sw = image.displayWidth || image.codedWidth || 1;
     const sh = image.displayHeight || image.codedHeight || 1;
@@ -81,16 +82,8 @@
     return out;
   }
 
-  // decode frame k of a decoder -> { text, dur(ms) }
-  async function renderIndex(dec, k) {
-    const { image } = await dec.decode({ frameIndex: k });
-    const text = frameToText(image);
-    const dur = image.duration ? image.duration / 1000 : 100;
-    image.close && image.close();
-    return { text, dur };
-  }
 
-  // cache encoded bytes (keep only current + next to bound memory)
+  // de-dupe in-flight fetches; entries are removed once a player consumes them
   const bufCache = new Map();
   function getBuffer(url) {
     if (!bufCache.has(url)) {
@@ -105,40 +98,51 @@
     return bufCache.get(url);
   }
 
-  // Build a player for a sticker: decode + render frame 0 up front (so the swap
-  // is instant), and expose start()/stop(). Only ONE player ever drives
-  // #ascii-art — the loop always stops the previous before starting the next,
-  // so two gifs can never write to the screen at the same time.
+  // Build a player for a sticker. ALL the heavy work — decode + canvas + ascii
+  // conversion — happens here, ONCE, ahead of time (during the idle window), so
+  // playback is just swapping a pre-built string into #ascii-art. The decoder is
+  // closed immediately, so nothing decodes on the hot path. Only one player ever
+  // drives the screen (the loop stops the old before starting the new).
   async function createPlayer(url) {
     const buf = await getBuffer(url);
     const dec = new ImageDecoder({ data: buf, type: mimeOf(url) });
-    await dec.tracks.ready;
-    const track = dec.tracks.selectedTrack;
-    const count = track ? track.frameCount : 1;
-    const first = await renderIndex(dec, 0);   // frame 0 ready before we show it
+    let frames;
+    try {
+      await dec.tracks.ready;
+      const track = dec.tracks.selectedTrack;
+      const count = track ? track.frameCount : 1;
+      const step = count > MAX_FRAMES ? Math.ceil(count / MAX_FRAMES) : 1;
+      frames = [];
+      for (let k = 0; k < count; k += step) {
+        const { image } = await dec.decode({ frameIndex: k }); // await yields each frame
+        const text = frameToText(image);
+        const dur = (image.duration ? image.duration / 1000 : 100) * step;
+        image.close && image.close();
+        frames.push({ text, dur });
+      }
+    } finally {
+      try { dec.close && dec.close(); } catch (e) {}
+      bufCache.delete(url);                    // bytes no longer needed
+    }
+    if (!frames.length) throw new Error("no frames");
 
     let stopped = false, timer = null, i = 0;
-    async function tick() {
+    function tick() {
       if (stopped) return;
-      i = (i + 1) % count;
-      let frame;
-      try { frame = await renderIndex(dec, i); }
-      catch (e) { return; }                    // hold last good frame on error
-      if (stopped) return;
-      art.textContent = frame.text;
-      timer = setTimeout(tick, Math.max(40, frame.dur));
+      i = (i + 1) % frames.length;
+      art.textContent = frames[i].text;
+      timer = setTimeout(tick, Math.max(MIN_FRAME_MS, frames[i].dur));
     }
 
     return {
-      firstText: first.text,
+      firstText: frames[0].text,
       start() {
-        if (!reduce && count > 1 && !stopped)
-          timer = setTimeout(tick, Math.max(40, first.dur));
+        if (!reduce && frames.length > 1 && !stopped)
+          timer = setTimeout(tick, Math.max(MIN_FRAME_MS, frames[0].dur));
       },
       stop() {
         stopped = true;
         if (timer) clearTimeout(timer);
-        try { dec.close && dec.close(); } catch (e) {}
       },
     };
   }
@@ -172,12 +176,10 @@
         bg.classList.remove("swapping"); // fade the new one in
       }
 
-      // decode the FOLLOWING sticker during the idle window so the next swap is
-      // instant (no blank gap), then prune buffers we no longer need
+      // pre-render the FOLLOWING sticker during the idle window so the next swap
+      // is instant (createPlayer frees its own buffer + decoder when done)
       const nextIdx = (idx + 1) % FILES.length;
       const preparing = prep(nextIdx);
-      const keep = new Set([FILES[idx], FILES[nextIdx]]);
-      for (const k of [...bufCache.keys()]) if (!keep.has(k)) bufCache.delete(k);
 
       await sleep(CYCLE_MS);
       next = await preparing;
