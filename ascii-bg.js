@@ -14,10 +14,11 @@
   const art = document.getElementById("ascii-art");
   if (!bg || !art) return;
 
-  // animated gifs only, taken from the footer (auto-syncs on add/remove)
+  // animated gifs only, taken from the footer (auto-syncs on add/remove).
+  // a footer <img data-no-bg> stays in the footer but is skipped in the rotation.
   const FILES = [...document.querySelectorAll(".stickers-footer img")]
-    .map((img) => img.src)
-    .filter((u) => /\.gif(\?|#|$)/i.test(u));
+    .filter((img) => !img.hasAttribute("data-no-bg") && /\.gif(\?|#|$)/i.test(img.src))
+    .map((img) => img.src);
   if (!FILES.length) return;
   for (let k = FILES.length - 1; k > 0; k--) {   // shuffle so each refresh varies
     const j = Math.floor(Math.random() * (k + 1));
@@ -147,31 +148,62 @@
     };
   }
 
-  let running = true;
+  // ---- on/off, persisted and wired to #bg-toggle (next to the theme switch) ----
+  const root = document.documentElement;
+  const STORE = "ascii-bg";
+  let enabled = localStorage.getItem(STORE) !== "off";
+  let activePlayer = null;             // the one currently animating (for instant stop)
+  let wakeUp = null;                   // resolver that un-parks the loop when re-enabled
 
+  const waitUntilEnabled = () =>
+    enabled ? Promise.resolve() : new Promise((r) => (wakeUp = r));
+
+  function setEnabled(on) {
+    if (on === enabled) return;
+    enabled = on;
+    root.setAttribute("data-ascii-bg", on ? "on" : "off");
+    if (on) {
+      const w = wakeUp; wakeUp = null; if (w) w();   // resume the parked loop
+    } else if (activePlayer) {
+      activePlayer.stop();                            // halt animation immediately
+      activePlayer = null;
+    }
+  }
+
+  // ONE loop runs for the page lifetime. When disabled it tears down and parks
+  // on waitUntilEnabled(), so there is never more than one loop / one player.
   async function loop() {
-    computeCols();
-    fitFont();
-
     const prep = (i) =>
       createPlayer(FILES[i]).catch((e) => {
         console.warn("[ascii-bg]", FILES[i], "failed:", e.message || e);
         return null;
       });
 
-    let idx = 0;
-    let current = null;
-    let next = await prep(idx);          // decode the first sticker before showing
+    let idx = 0, current = null, next = null;
 
-    while (running) {
+    while (true) {
+      if (!enabled) {                  // teardown + park until toggled back on
+        if (current) { current.stop(); current = null; }
+        activePlayer = null;
+        next = null;
+        art.textContent = "";
+        await waitUntilEnabled();
+        computeCols();
+        fitFont();
+      }
+
+      if (!next) next = await prep(idx);
+      if (!enabled) continue;          // toggled off during decode
+
       if (next) {
-        if (current) {                   // fade the old out, then swap (one writer)
+        if (current) {                 // fade the old out, then swap (one writer)
           bg.classList.add("swapping");
           await sleep(FADE_MS);
           current.stop();
         }
         art.textContent = next.firstText;
         current = next;
+        activePlayer = next;
         current.start();
         bg.classList.remove("swapping"); // fade the new one in
       }
@@ -182,10 +214,31 @@
       const preparing = prep(nextIdx);
 
       await sleep(CYCLE_MS);
+      if (!enabled) continue;          // teardown handled at loop top
       next = await preparing;
       idx = nextIdx;
     }
   }
+
+  root.setAttribute("data-ascii-bg", enabled ? "on" : "off");
+  computeCols();
+  fitFont();
+
+  const btn = document.getElementById("bg-toggle");
+  if (btn) {
+    const sync = () => {
+      btn.classList.toggle("off", !enabled);
+      btn.setAttribute("aria-pressed", String(enabled));
+      btn.title = enabled ? "hide ascii background" : "show ascii background";
+    };
+    sync();
+    btn.addEventListener("click", () => {
+      setEnabled(!enabled);
+      localStorage.setItem(STORE, enabled ? "on" : "off");
+      sync();
+    });
+  }
+
   loop();
 
   let rz;

@@ -110,7 +110,12 @@ li { padding: 0.15rem 0; }
 .title a:hover { background: transparent; color: var(--fg); }
 .tagline { color: var(--muted); margin: 0.3rem 0 0; }
 
-#theme-toggle {
+.header-controls {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+#theme-toggle, #bg-toggle {
   background: var(--bg);
   color: var(--fg);
   border: 1px solid var(--fg);
@@ -122,7 +127,8 @@ li { padding: 0.15rem 0; }
   cursor: pointer;
   flex-shrink: 0;
 }
-#theme-toggle:hover { background: var(--fg); color: var(--bg); }
+#theme-toggle:hover, #bg-toggle:hover { background: var(--fg); color: var(--bg); }
+#bg-toggle.off { opacity: 0.4; }   /* dimmed when the background is turned off */
 
 #search {
   width: 100%;
@@ -295,7 +301,7 @@ aside h2 {
 @media (max-width: 640px) {
   .wrap { padding: 1.25rem 1rem; }
   .title { font-size: 3rem; }
-  #theme-toggle { width: 2.75rem; height: 2.75rem; }
+  #theme-toggle, #bg-toggle { width: 2.75rem; height: 2.75rem; }
   .layout { grid-template-columns: 1fr; gap: 1.5rem; }
   .footer-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .xmr .qr-slot { width: 60%; }
@@ -309,6 +315,7 @@ aside h2 {
 
 
 /* ---------- ascii sticker background (see ascii-bg.js) ---------- */
+:root[data-ascii-bg="off"] #ascii-bg { display: none; }   /* toggled via #bg-toggle */
 #ascii-bg {
   position: fixed;
   inset: 0;
