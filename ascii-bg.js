@@ -151,7 +151,7 @@
   // ---- on/off, persisted and wired to #bg-toggle (next to the theme switch) ----
   const root = document.documentElement;
   const STORE = "ascii-bg";
-  let enabled = localStorage.getItem(STORE) !== "off";
+  let enabled = localStorage.getItem(STORE) === "on";   // default OFF until opted in
   let activePlayer = null;             // the one currently animating (for instant stop)
   let wakeUp = null;                   // resolver that un-parks the loop when re-enabled
 
