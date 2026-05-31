@@ -306,3 +306,42 @@ aside h2 {
 @media (max-width: 380px) {
   .title { font-size: 2.25rem; }
 }
+
+
+/* ---------- ascii sticker background (see ascii-bg.js) ---------- */
+#ascii-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;              /* behind page content, in front of body bg */
+  overflow: hidden;
+  pointer-events: none;     /* never intercept clicks/scroll */
+  user-select: none;
+  display: grid;
+  place-items: center;
+}
+#ascii-art {
+  margin: 0;
+  font-family: ui-monospace, "Courier New", monospace;
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: pre;
+  text-align: center;
+  color: var(--fg);
+  opacity: 0.2;             /* default: light / auto */
+  transition: opacity 0.6s ease;
+}
+/* per-theme tuning — pick a glyph color that contrasts hard with each bg,
+   then raise opacity. On blue, DARK glyphs read far better than white. */
+:root[data-theme="light"]      #ascii-art { color: #000;    opacity: 0.5; }
+:root[data-theme="light-blue"] #ascii-art { color: #06283d; opacity: 0.5; }
+:root[data-theme="dark"]       #ascii-art { color: #eee;    opacity: 0.2; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) #ascii-art { color: #000; opacity: 0.5; }
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) #ascii-art { color: #eee; opacity: 0.2; }
+}
+#ascii-bg.swapping #ascii-art { opacity: 0; }   /* crossfade between gifs */
+@media (prefers-reduced-motion: reduce) {
+  #ascii-art { transition: none; }
+}

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pixel ascii</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#2b2440;
+    --line:#3a2f5c;
+    --panel:#fef6ff;
+    --bar:#ff8fc7;
+    --bar2:#a98bff;
+    --accent:#7c5cff;
+    --pink:#ff8fc7;
+    --mint:#8fe3c7;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:22px;
+    font-family:"VT323","Courier New",monospace;
+    font-size:20px; color:var(--ink);
+    background:
+      radial-gradient(circle at 15% 12%, #ffffff55, transparent 8%),
+      radial-gradient(circle at 70% 20%, #ffffff44, transparent 6%),
+      linear-gradient(180deg, #b8c6ff 0%, #d6b8ff 38%, #ffc6e6 70%, #ffd9b8 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    image-rendering:pixelated;
+  }
+  .page{max-width:880px; margin:0 auto;}
+
+  h1{
+    font-family:"Press Start 2P",monospace;
+    font-size:26px; line-height:1.4;
+    text-align:center; margin:6px 0 2px;
+    color:#fff;
+    text-shadow:3px 3px 0 var(--accent), 6px 6px 0 #00000022;
+  }
+  .sub{
+    font-family:"Press Start 2P",monospace;
+    font-size:10px; text-align:center; color:#fff;
+    text-shadow:2px 2px 0 var(--pink); margin-bottom:16px;
+  }
+
+  /* chunky pixel border via layered box-shadow */
+  .pixel{
+    background:var(--panel);
+    border:0; position:relative; margin:14px 0;
+    box-shadow:
+      0 -4px 0 0 var(--ink), 0 4px 0 0 var(--ink),
+      -4px 0 0 0 var(--ink), 4px 0 0 0 var(--ink),
+      0 0 0 4px var(--ink);
+  }
+  .pixel .bar{
+    font-family:"Press Start 2P",monospace;
+    font-size:11px; color:#fff;
+    background:linear-gradient(90deg,var(--bar),var(--bar2));
+    padding:8px 10px;
+    border-bottom:4px solid var(--ink);
+  }
+  .pixel .body{padding:12px 14px;}
+
+  table{border-collapse:collapse; width:100%;}
+  td{padding:6px 6px; vertical-align:middle;}
+  td.lbl{white-space:nowrap; width:1%; color:var(--accent); padding-right:12px;}
+
+  input[type=range]{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:10px; background:#e7ddff;
+    border:3px solid var(--ink);
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:16px; height:18px;
+    background:var(--accent); border:3px solid var(--ink); cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:14px; height:16px; background:var(--accent);
+    border:3px solid var(--ink); cursor:pointer; border-radius:0;
+  }
+  .val{color:var(--pink); font-size:22px;}
+
+  button, label.fakebtn{
+    font-family:"Press Start 2P",monospace;
+    font-size:10px; color:var(--ink);
+    background:var(--mint);
+    border:0; padding:10px 14px; cursor:pointer;
+    box-shadow:0 -3px 0 var(--ink),0 3px 0 var(--ink),-3px 0 0 var(--ink),3px 0 0 var(--ink), 4px 4px 0 #00000033;
+    margin:0 8px 8px 0; display:inline-block;
+  }
+  button:nth-of-type(odd){background:#ffd28f;}
+  label.fakebtn{background:var(--pink); color:#fff;}
+  button:hover, label.fakebtn:hover{filter:brightness(1.08);}
+  button:active, label.fakebtn:active{transform:translate(2px,2px); box-shadow:0 -3px 0 var(--ink),0 3px 0 var(--ink),-3px 0 0 var(--ink),3px 0 0 var(--ink);}
+  button:disabled{background:#d8d3e6; color:#9990b5; cursor:not-allowed; box-shadow:0 -3px 0 #9990b5,0 3px 0 #9990b5,-3px 0 0 #9990b5,3px 0 0 #9990b5;}
+  input[type=file]{display:none;}
+
+  .opt{font-family:"Press Start 2P",monospace; font-size:10px; cursor:pointer; margin-right:18px;}
+  input[type=checkbox]{
+    -webkit-appearance:none; appearance:none;
+    width:18px; height:18px; background:#fff; border:3px solid var(--ink);
+    vertical-align:middle; cursor:pointer; margin-right:4px;
+  }
+  input[type=checkbox]:checked{background:var(--accent);}
+
+  #wrap{
+    background:#1a1430; padding:10px; overflow:auto;
+    box-shadow:0 -4px 0 0 var(--ink),0 4px 0 0 var(--ink),-4px 0 0 0 var(--ink),4px 0 0 0 var(--ink),0 0 0 4px var(--ink);
+  }
+  #out{margin:0; white-space:pre; line-height:1.0; font-size:7px; font-family:"Courier New",monospace; color:#ffd9f0;}
+  #out.color span{display:inline;}
+  .hint{
+    font-family:"Press Start 2P",monospace; font-size:11px; line-height:1.8;
+    color:#c9b8ff; text-align:center; padding:24px 10px;
+  }
+  .blink{animation:blink 1s steps(1) infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  body.dragging #wrap{box-shadow:0 0 0 4px var(--pink),0 0 0 8px var(--accent);}
+
+  .footer{
+    font-family:"Press Start 2P",monospace; font-size:8px;
+    text-align:center; color:#fff; text-shadow:1px 1px 0 var(--accent);
+    margin-top:16px; line-height:2;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>pixel ascii</h1>
+  <div class="sub">★ image · gif · video to ascii ★</div>
+
+  <div class="pixel">
+    <div class="bar">CONTROLS</div>
+    <div class="body">
+      <div>
+        <label class="fakebtn" for="file">LOAD MEDIA</label>
+        <input type="file" id="file" accept="image/*,video/*">
+        <button id="play" disabled>▶ PLAY</button>
+        <button id="copy" disabled>COPY</button>
+        <button id="txt" disabled>SAVE TXT</button>
+        <button id="png" disabled>SAVE PNG</button>
+        <button id="vid" disabled>SAVE VID</button>
+      </div>
+      <table>
+        <tr><td class="lbl">WIDTH</td><td><input type="range" id="width" min="40" max="300" value="140"> <span class="val" id="widthV">140</span></td></tr>
+        <tr><td class="lbl">CONTRAST</td><td><input type="range" id="contrast" min="-100" max="100" value="0"> <span class="val" id="contrastV">0</span></td></tr>
+        <tr><td class="lbl">BRIGHT</td><td><input type="range" id="brightness" min="-100" max="100" value="0"> <span class="val" id="brightnessV">0</span></td></tr>
+        <tr><td class="lbl">OPTIONS</td><td>
+          <label class="opt"><input type="checkbox" id="color"> COLOR</label>
+          <label class="opt"><input type="checkbox" id="invert"> INVERT</label>
+        </td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div id="wrap">
+    <pre id="out"></pre>
+    <p class="hint" id="hint">drag &amp; drop · paste · or load an image / gif / video<br><span class="blink">▮</span></p>
+  </div>
+
+  <div class="footer">runs in your browser · nothing uploaded</div>
+
+</div>
+
+<script>
+(() => {
+  const RAMP = " .:-=+*#%@";
+  const CHAR_ASPECT = 0.5;
+  const $ = id => document.getElementById(id);
+  const el = {
+    file:$('file'), width:$('width'), widthV:$('widthV'),
+    contrast:$('contrast'), contrastV:$('contrastV'),
+    brightness:$('brightness'), brightnessV:$('brightnessV'),
+    color:$('color'), invert:$('invert'),
+    out:$('out'), hint:$('hint'), wrap:$('wrap'),
+    play:$('play'), copy:$('copy'), txt:$('txt'), png:$('png'), vid:$('vid'),
+  };
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let plainText = "";
+
+  // playback state -----------------------------------------------------------
+  let source = null;        // current drawable: Image | ImageBitmap | HTMLVideoElement
+  let mode = 'still';       // 'still' | 'frames' | 'video'
+  let frames = null;        // animated images: [{bitmap, duration(ms)}]
+  let frameIdx = 0;
+  let timer = null, raf = null, playing = false, recording = false;
+  let videoEl = null, objUrl = null;
+
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const srcDims = s => s instanceof HTMLVideoElement
+    ? [s.videoWidth, s.videoHeight]
+    : [s.width || s.naturalWidth, s.height || s.naturalHeight];
+
+  function render() {
+    if (!source) return;
+    const [sw, sh] = srcDims(source);
+    if (!sw || !sh) return;
+    const cols = +el.width.value;
+    const rows = Math.max(1, Math.round(cols * (sh/sw) * CHAR_ASPECT));
+    canvas.width = cols; canvas.height = rows;
+    ctx.clearRect(0,0,cols,rows);
+    ctx.drawImage(source, 0, 0, cols, rows);
+    const data = ctx.getImageData(0,0,cols,rows).data;
+    const contrast = +el.contrast.value, bright = +el.brightness.value;
+    const cF = (259*(contrast+255))/(255*(259-contrast));
+    const useColor = el.color.checked, invert = el.invert.checked, L = RAMP.length;
+    const lines = [], html = [];
+    for (let y=0; y<rows; y++) {
+      let line="", h="";
+      for (let x=0; x<cols; x++) {
+        const i=(y*cols+x)*4;
+        const r=data[i], g=data[i+1], b=data[i+2], a=data[i+3]/255;
+        let lum = 0.299*r+0.587*g+0.114*b;
+        lum = cF*(lum-128)+128+bright;
+        lum = Math.max(0,Math.min(255,lum))*a;
+        if (invert) lum = 255-lum;
+        let idx = Math.round((lum/255)*(L-1));
+        idx = Math.max(0,Math.min(L-1,idx));
+        const ch = RAMP[idx];
+        line += ch;
+        if (useColor) h += `<span style="color:rgb(${r},${g},${b})">${esc(ch)}</span>`;
+      }
+      lines.push(line); if (useColor) html.push(h);
+    }
+    plainText = lines.join("\n");
+    el.hint.style.display = 'none';
+    if (useColor) { el.out.classList.add('color'); el.out.innerHTML = html.join("\n"); }
+    else { el.out.classList.remove('color'); el.out.textContent = plainText; }
+    const avail = el.wrap.clientWidth - 24;
+    el.out.style.fontSize = Math.max(3, Math.min(11, avail/(cols*0.6))).toFixed(2)+'px';
+    el.copy.disabled = el.txt.disabled = el.png.disabled = false;
+  }
+
+  // ---- playback control ----------------------------------------------------
+  function stop() {
+    playing = false;
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (raf) { cancelAnimationFrame(raf); raf = null; }
+  }
+  function reset() {
+    stop();
+    if (videoEl) { videoEl.pause(); videoEl.src = ''; videoEl = null; }
+    if (objUrl) { URL.revokeObjectURL(objUrl); objUrl = null; }
+    frames = null; frameIdx = 0;
+  }
+  function setPlayBtn() {
+    const animated = mode !== 'still';
+    el.play.disabled = !animated;
+    el.play.textContent = !animated ? '▶ PLAY' : (playing ? '❚❚ PAUSE' : '▶ PLAY');
+    if (!recording) el.vid.disabled = !animated;
+  }
+  function playFrames() {
+    stop(); playing = true; setPlayBtn();
+    const step = () => {
+      if (!playing || mode !== 'frames' || !frames) return;
+      source = frames[frameIdx].bitmap;
+      render();
+      const dur = frames[frameIdx].duration || 100;
+      frameIdx = (frameIdx + 1) % frames.length;
+      timer = setTimeout(step, dur);
+    };
+    step();
+  }
+  function playVideo() {
+    stop(); playing = true; setPlayBtn();
+    if (videoEl) videoEl.play().catch(()=>{});
+    const step = () => {
+      if (!playing || mode !== 'video') return;
+      render();
+      raf = requestAnimationFrame(step);
+    };
+    step();
+  }
+  function resume() { if (mode === 'frames') playFrames(); else if (mode === 'video') playVideo(); }
+
+  el.play.addEventListener('click', () => {
+    if (mode === 'still') return;
+    if (playing) { stop(); if (videoEl) videoEl.pause(); setPlayBtn(); }
+    else resume();
+  });
+
+  // ---- loaders -------------------------------------------------------------
+  function loadImage(file) {
+    const url = URL.createObjectURL(file);
+    const i = new Image();
+    i.onload = () => {
+      reset(); mode = 'still'; source = i; setPlayBtn(); render();
+      URL.revokeObjectURL(url);
+    };
+    i.onerror = () => { alert('load failed!'); URL.revokeObjectURL(url); };
+    i.src = url;
+  }
+
+  async function loadAnimated(file) {
+    if (!('ImageDecoder' in window)) return false;
+    try {
+      const buf = await file.arrayBuffer();
+      const dec = new ImageDecoder({ data: buf, type: file.type });
+      await dec.tracks.ready;
+      const count = dec.tracks.selectedTrack?.frameCount || 0;
+      if (count < 2) { dec.close?.(); return false; }
+      const fr = [];
+      for (let k = 0; k < count; k++) {
+        const { image } = await dec.decode({ frameIndex: k });
+        fr.push({ bitmap: await createImageBitmap(image), duration: image.duration ? image.duration/1000 : 100 });
+        image.close?.();
+      }
+      dec.close?.();
+      reset(); frames = fr; frameIdx = 0; mode = 'frames'; source = frames[0].bitmap;
+      playFrames();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function loadVideo(file) {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true;
+    v.addEventListener('loadeddata', () => {
+      reset(); objUrl = url; videoEl = v; source = v; mode = 'video';
+      playVideo();
+    }, { once: true });
+    v.addEventListener('error', () => { alert('video load failed!'); URL.revokeObjectURL(url); });
+    v.src = url;
+  }
+
+  async function load(file) {
+    if (!file) return;
+    if (file.type.startsWith('video/')) { loadVideo(file); return; }
+    if (!file.type.startsWith('image/')) { alert('not an image or video!'); return; }
+    const animCandidate = /gif|webp|apng|png/.test(file.type);
+    if (animCandidate && await loadAnimated(file)) return;
+    loadImage(file);
+  }
+
+  el.file.addEventListener('change', e => load(e.target.files[0]));
+  const bind = (input, label) => input.addEventListener('input', () => { if (label) label.textContent = input.value; render(); });
+  bind(el.width, el.widthV); bind(el.contrast, el.contrastV); bind(el.brightness, el.brightnessV);
+  el.color.addEventListener('change', render);
+  el.invert.addEventListener('change', render);
+  window.addEventListener('resize', () => source && render());
+
+  document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('dragging'); });
+  document.addEventListener('dragleave', e => { if (e.relatedTarget===null) document.body.classList.remove('dragging'); });
+  document.addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('dragging'); if (e.dataTransfer.files[0]) load(e.dataTransfer.files[0]); });
+  document.addEventListener('paste', e => { const it=[...e.clipboardData.items].find(x=>x.type.startsWith('image/')); if (it) load(it.getAsFile()); });
+
+  el.copy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(plainText); el.copy.textContent='COPIED!'; setTimeout(()=>el.copy.textContent='COPY',1200); }
+    catch { alert('clipboard blocked!'); }
+  });
+  el.txt.addEventListener('click', () => {
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([plainText],{type:'text/plain'}));
+    a.download='ascii-art.txt'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  // draw the current ASCII (plainText + color from main canvas) onto a canvas
+  function drawAscii(o) {
+    const lines=plainText.split('\n'), fs=12, lh=fs, cw=fs*0.6;
+    o.width=Math.max(1,Math.ceil((lines[0]?.length||1)*cw)); o.height=Math.max(1,lines.length*lh);
+    const c=o.getContext('2d');
+    c.fillStyle='#1a1430'; c.fillRect(0,0,o.width,o.height);
+    c.font=`${fs}px monospace`; c.textBaseline='top';
+    const data = el.color.checked ? ctx.getImageData(0,0,canvas.width,canvas.height).data : null;
+    const cols = canvas.width;
+    for (let y=0;y<lines.length;y++) for (let x=0;x<lines[y].length;x++) {
+      if (data){const i=(y*cols+x)*4; c.fillStyle=`rgb(${data[i]},${data[i+1]},${data[i+2]})`;}
+      else c.fillStyle='#ffd9f0';
+      c.fillText(lines[y][x], x*cw, y*lh);
+    }
+    return o;
+  }
+
+  el.png.addEventListener('click', () => {
+    const o=drawAscii(document.createElement('canvas'));
+    const a=document.createElement('a'); a.href=o.toDataURL('image/png'); a.download='ascii-art.png'; a.click();
+  });
+
+  // ---- export animation as video (MediaRecorder over a canvas stream) -------
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  function pickMime() {
+    const cands = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm','video/mp4'];
+    return cands.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+  }
+
+  el.vid.addEventListener('click', async () => {
+    if (recording || mode === 'still' || !window.MediaRecorder) return;
+    const wasPlaying = playing;
+    recording = true; stop(); if (videoEl) videoEl.pause();
+    el.vid.disabled = true; el.vid.textContent = 'REC…';
+
+    // prime first frame so the output canvas + capture size are set
+    if (mode === 'frames') source = frames[0].bitmap;
+    render();
+    const o = drawAscii(document.createElement('canvas'));
+    const mime = pickMime();
+    const stream = o.captureStream(0);
+    const track = stream.getVideoTracks()[0];
+    const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 8e6 } : {});
+    const chunks = [];
+    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    const stopped = new Promise(res => { rec.onstop = res; });
+    rec.start();
+    const grab = () => { drawAscii(o); track.requestFrame && track.requestFrame(); };
+
+    try {
+      if (mode === 'frames') {
+        for (let k = 0; k < frames.length; k++) {
+          source = frames[k].bitmap; render(); grab();
+          await sleep(frames[k].duration || 100);
+        }
+      } else { // video — record one full pass
+        const v = videoEl; v.loop = false; v.currentTime = 0;
+        await v.play().catch(()=>{});
+        await new Promise(res => {
+          v.addEventListener('ended', res, { once: true });
+          const loop = () => { if (v.ended || v.paused) { res(); return; } render(); grab(); requestAnimationFrame(loop); };
+          requestAnimationFrame(loop);
+        });
+        v.loop = true;
+      }
+    } catch (e) { /* fall through to finalize */ }
+
+    rec.stop();
+    await stopped;
+    const blob = new Blob(chunks, { type: mime || 'video/webm' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ascii-anim.' + (mime.includes('mp4') ? 'mp4' : 'webm');
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+
+    recording = false; el.vid.textContent = 'SAVE VID'; setPlayBtn();
+    if (wasPlaying) resume();
+  });
+})();
+</script>
+</body>
+</html>
